@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Experiment run outputs (keep the results/ dir, ignore generated files)
+results/*
+!results/.gitkeep
+injected.png
