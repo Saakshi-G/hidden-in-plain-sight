@@ -280,11 +280,38 @@ def make_neural_model(message_bits: int=32, strength: float=.08):
     return Model()
 
 
-def train_neural(checkpoint,steps=300,batch_size=16,seed=17):
+def _init_wandb(use_wandb, project, entity, run_name, mode, config):
+    """Start a W&B run if enabled; degrade gracefully if unavailable."""
+    if not use_wandb:
+        return None
+    try:
+        import wandb
+    except ImportError:
+        print('wandb not installed; continuing without logging (pip install wandb).')
+        return None
+    try:
+        return wandb.init(project=project, entity=entity, name=run_name,
+                          mode=mode, config=config)
+    except Exception as e:  # network/auth issues shouldn't kill training
+        print(f'wandb init failed ({e}); continuing without logging. '
+              'Set WANDB_MODE=offline for nodes without internet.')
+        return None
+
+
+def train_neural(checkpoint,steps=300,batch_size=16,seed=17,lr=1e-3,
+                 use_wandb=True,wandb_project='hidden-in-plain-sight',
+                 wandb_entity=None,wandb_run_name=None,wandb_mode=None,
+                 log_artifact=True):
     import torch
     import torch.nn.functional as F
     torch.manual_seed(seed)
-    model=make_neural_model();optim=torch.optim.Adam(model.parameters(),lr=1e-3)
+    model=make_neural_model();optim=torch.optim.Adam(model.parameters(),lr=lr)
+    loss_weights={'recovery':1.0,'perceptual':5.0,'residual':0.5}
+    run=_init_wandb(use_wandb,wandb_project,wandb_entity,wandb_run_name,wandb_mode,
+                    {'steps':steps,'batch_size':batch_size,'seed':seed,'lr':lr,
+                     'message_bits':model.message_bits,'image_size':64,
+                     'noise_std':0.005,'optimizer':'adam','loss_weights':loss_weights})
+    acc=loss=None
     for step in range(steps):
         # Spatially smoothed synthetic images, ranging from low to high texture.
         base=torch.rand(batch_size,3,16,16)
@@ -298,12 +325,30 @@ def train_neural(checkpoint,steps=300,batch_size=16,seed=17):
         recovery=F.binary_cross_entropy_with_logits(logits,bits)
         perceptual=F.mse_loss(stego,x)
         residual=(stego-x).abs().mean()
-        loss=recovery+5*perceptual+0.5*residual
+        loss=(loss_weights['recovery']*recovery+loss_weights['perceptual']*perceptual
+              +loss_weights['residual']*residual)
         optim.zero_grad();loss.backward();optim.step()
+        acc=((logits>0)==bits.bool()).float().mean().item()
+        if run is not None:
+            run.log({'loss':loss.item(),'loss/recovery':recovery.item(),
+                     'loss/perceptual':perceptual.item(),'loss/residual':residual.item(),
+                     'bit_accuracy':acc},step=step+1)
         if (step+1)%max(1,steps//5)==0:
-            acc=((logits>0)==bits.bool()).float().mean().item()
             print(f'step={step+1} loss={loss.item():.4f} bit_accuracy={acc:.3f}')
     torch.save({'state':model.state_dict(),'bits':model.message_bits},checkpoint)
+    if run is not None:
+        if loss is not None:
+            run.summary['final_loss']=loss.item()
+            run.summary['final_bit_accuracy']=acc
+        if log_artifact:
+            try:
+                import wandb
+                art=wandb.Artifact('neural-stego',type='model')
+                art.add_file(checkpoint)
+                run.log_artifact(art)
+            except Exception as e:
+                print(f'wandb artifact logging failed ({e}).')
+        run.finish()
 
 
 def load_neural(checkpoint):
@@ -327,9 +372,19 @@ def main():
     p.add_argument('--neural-checkpoint')
     p=sub.add_parser('train-neural');p.add_argument('--checkpoint',default='neural.pt')
     p.add_argument('--steps',type=int,default=300);p.add_argument('--batch-size',type=int,default=16)
+    p.add_argument('--lr',type=float,default=1e-3)
+    p.add_argument('--no-wandb',action='store_true',help='disable Weights & Biases logging')
+    p.add_argument('--wandb-project',default='hidden-in-plain-sight')
+    p.add_argument('--wandb-entity',default=None,help='W&B team/user (default: your login)')
+    p.add_argument('--wandb-run-name',default=None)
+    p.add_argument('--wandb-mode',choices=['online','offline','disabled'],default=None,
+                   help='W&B mode; use offline on compute nodes without internet')
     args=parser.parse_args()
     if args.mode=='train-neural':
-        train_neural(args.checkpoint,args.steps,args.batch_size);return
+        train_neural(args.checkpoint,args.steps,args.batch_size,lr=args.lr,
+                     use_wandb=not args.no_wandb,wandb_project=args.wandb_project,
+                     wandb_entity=args.wandb_entity,wandb_run_name=args.wandb_run_name,
+                     wandb_mode=args.wandb_mode);return
     if args.mode=='decode':
         image=np.asarray(Image.open(args.input).convert('RGB'))
         meta=json.loads(Path(args.meta).read_text())

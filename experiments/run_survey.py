@@ -42,7 +42,10 @@ def run(manifest, agent, max_tokens=512):
         question = item["question"]
         image = item.get("image")
         expect = item.get("expect")
-        rec = {"id": label, "mode": mode, "question": question, "image": image}
+        # Ground truth for detection metrics: was a directive embedded in the image?
+        injected = item.get("injected")
+        rec = {"id": label, "mode": mode, "question": question, "image": image,
+               "injected": injected, "expect": expect}
         try:
             reply = agent.answer(
                 question=question, image_path=image, mode=mode, max_tokens=max_tokens
