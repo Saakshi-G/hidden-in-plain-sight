@@ -24,9 +24,9 @@
 #SBATCH --output=results/slurm-%j.out
 #SBATCH --error=results/slurm-%j.err
 #SBATCH -p general                 # partition (Sol: e.g. general / highmem)
-#SBATCH -q public                  # QoS      (Sol: e.g. public / grp_<name>)
+#SBATCH -q class                  # QoS      (Sol: e.g. public / grp_<name>)
 #SBATCH -G a100:1                  # one GPU is plenty for a 7B VLM
-#SBATCH -c 8                       # CPU cores
+#SBATCH -c 4                       # CPU cores
 #SBATCH --mem=64G
 #SBATCH -t 0-02:00:00              # walltime D-HH:MM:SS
 ##SBATCH -A <your_account>         # uncomment + set if your QoS needs an account
