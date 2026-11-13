@@ -66,6 +66,7 @@ echo "manifest=${MANIFEST} out=${OUT}"
 #   pip install vllm requests pillow numpy
 # Qwen2.5-VL needs a recent vLLM (>= 0.6.3) and transformers; a current vllm
 # pip install pulls compatible deps.
+source setup.sh
 if [ -n "${ENV_ACTIVATE}" ]; then
     eval "${ENV_ACTIVATE}"
 else
