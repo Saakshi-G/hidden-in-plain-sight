@@ -223,3 +223,10 @@ __marimo__/
 results/*
 !results/.gitkeep
 injected.png
+
+# Generated dataset, model outputs
+data/synthetic/
+runs/
+# NEVER commit private signing keys
+*.sk
+crypto/keys/

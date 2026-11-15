@@ -26,13 +26,8 @@
 #SBATCH -p general                 # partition (Sol: e.g. general / highmem)
 #SBATCH -q class                  # QoS      (Sol: e.g. public / grp_<name>)
 #SBATCH -G a100:1                  # one GPU is plenty for a 7B VLM
-<<<<<<< HEAD
-#SBATCH -c 4                       # CPU cores
-#SBATCH --mem=64G
-=======
 #SBATCH -c 4                       # CPU cores (4 is enough for single-stream serving)
 #SBATCH --mem=32G                  # 7B weights live in GPU mem; 32G host RAM suffices
->>>>>>> 5620d39 (new setup)
 #SBATCH -t 0-02:00:00              # walltime D-HH:MM:SS
 ##SBATCH -A <your_account>         # uncomment + set if your QoS needs an account
 

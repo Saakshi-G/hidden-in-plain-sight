@@ -19,7 +19,7 @@ set -euo pipefail
 
 ENV_NAME="${ENV_NAME:-hips-vllm}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
-REQUIRED_MODULES="torch vllm wandb requests PIL numpy"
+REQUIRED_MODULES="torch vllm wandb requests PIL numpy cryptography transformers peft qwen_vl_utils"
 
 verify() {
     python - "$@" <<'PY'
@@ -68,7 +68,10 @@ source activate "${ENV_NAME}"
 python -m pip install --upgrade pip
 # vLLM pulls a matching torch/CUDA build on Sol, so we don't pin torch here.
 echo "installing vllm + project deps (this can take a few minutes) ..."
-pip install vllm wandb requests pillow numpy
+pip install vllm wandb requests pillow numpy scipy cryptography
+# VLM fine-tuning stack (transformers/accelerate come with vllm, but pin extras)
+pip install "transformers>=4.49" peft accelerate datasets qwen-vl-utils
+# Optional QLoRA on 40GB GPUs:  pip install bitsandbytes
 
 # --- 5. verify ---------------------------------------------------------------
 echo
