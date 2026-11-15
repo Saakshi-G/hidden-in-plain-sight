@@ -88,6 +88,8 @@ def main() -> None:
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--temperature", type=float, default=0.0)
     p.add_argument("--max-tokens", type=int, default=512)
+    p.add_argument("--no-metrics", action="store_true",
+                   help="skip the detection-metrics report at the end of the run")
     args = p.parse_args()
 
     manifest = json.loads(Path(args.manifest).read_text())
@@ -111,9 +113,19 @@ def main() -> None:
     summary = {"model": agent.model, "n_items": len(results),
                "elapsed_sec": round(elapsed, 1), "by_mode": summarize(results)}
     out.with_suffix(".summary.json").write_text(json.dumps(summary, indent=2))
-    print("\n=== summary ===")
-    print(json.dumps(summary, indent=2))
     print(f"\nwrote: {out} and {out.with_suffix('.summary.json')}")
+
+    # Detection metrics are part of a run, not a separate step: report them here,
+    # reusing the shared engine in evaluation/metrics.py (which also aggregates
+    # across many runs/models for transferability when run standalone).
+    if not args.no_metrics:
+        try:
+            from evaluation.metrics import analyze, print_report
+            print()
+            report = analyze([str(out)])
+            print_report(report)
+        except Exception as e:
+            print(f"(metrics step skipped: {e})")
 
 
 if __name__ == "__main__":
