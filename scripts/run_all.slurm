@@ -18,12 +18,12 @@
 #SBATCH --job-name=hips-all
 #SBATCH --output=results/slurm-%j.out
 #SBATCH --error=results/slurm-%j.err
-#SBATCH -p general                 # <- change to your partition if different
+#SBATCH -p htc                 # <- change to your partition if different
 #SBATCH -q class                   # <- change to your QoS if different
 #SBATCH -G a100:1
 #SBATCH -c 8
 #SBATCH --mem=64G
-#SBATCH -t 0-06:00:00
+#SBATCH -t 0-04:00:00
 
 set -uo pipefail
 
@@ -56,12 +56,31 @@ echo "model=${MODEL} data=${DATA_DIR} run_train=${RUN_TRAIN} out=${OUT}"
 if [ -n "${ENV_ACTIVATE}" ]; then
     eval "${ENV_ACTIVATE}"
 else
-    module load mamba 2>/dev/null || true
-    source activate hips-vllm 2>/dev/null || {
+    module load mamba/latest 2>/dev/null || true
+    eval "$(mamba shell hook --shell bash)"
+    mamba activate hips-vllm || {
         echo "ERROR: activate the env first (run scripts/script0_setup.sh), or set ENV_ACTIVATE." >&2
         exit 1
+
     }
+
 fi
+
+# Verify batch job is actually using hips-vllm
+echo "Python: $(which python)"
+python --version
+
+python - <<'PY'
+import torch
+import scipy
+import vllm
+
+print("torch:", torch.__version__)
+print("scipy:", scipy.__version__)
+print("vllm:", vllm.__version__)
+print("environment check OK")
+PY
+
 python -c "import vllm, requests, PIL" 2>/dev/null || {
     echo "ERROR: core deps missing. Re-run scripts/script0_setup.sh." >&2; exit 1; }
 
@@ -103,7 +122,7 @@ SERVER_LOG="results/vllm-${SLURM_JOB_ID:-local}.log"
 vllm serve "${MODEL}" --served-model-name "${SERVED_NAME}" \
     --host 127.0.0.1 --port "${PORT}" --tensor-parallel-size "${TP}" \
     --max-model-len "${MAX_MODEL_LEN}" --gpu-memory-utilization "${GPU_MEM_UTIL}" \
-    --limit-mm-per-prompt image=1 --trust-remote-code > "${SERVER_LOG}" 2>&1 &
+    --limit-mm-per-prompt '{"image":1}' --trust-remote-code > "${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
 cleanup() { kill "${SERVER_PID}" 2>/dev/null || true; wait "${SERVER_PID}" 2>/dev/null || true; }
 trap cleanup EXIT
