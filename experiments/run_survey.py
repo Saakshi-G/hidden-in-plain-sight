@@ -34,13 +34,19 @@ except ImportError:
     from agents.glm5_agent import GLM5Agent, check_injection, DEFAULT_BASE_URL, DEFAULT_MODEL
 
 
-def run(manifest, agent, max_tokens=512):
+def run(manifest, agent, max_tokens=512, manifest_dir=None):
     results = []
     for i, item in enumerate(manifest):
         label = item.get("id", f"item{i}")
         mode = item.get("mode", "susceptible")
         question = item["question"]
         image = item.get("image")
+
+        if image and manifest_dir is not None:
+            image_path = Path(image)
+            if not image_path.is_absolute():
+                image = str(manifest_dir / image_path)
+
         expect = item.get("expect")
         # Ground truth for detection metrics: was a directive embedded in the image?
         injected = item.get("injected")
@@ -92,7 +98,9 @@ def main() -> None:
                    help="skip the detection-metrics report at the end of the run")
     args = p.parse_args()
 
-    manifest = json.loads(Path(args.manifest).read_text())
+    manifest_path = Path(args.manifest).resolve()
+    manifest_dir = manifest_path.parent
+    manifest = json.loads(manifest_path.read_text())
     if not isinstance(manifest, list):
         raise SystemExit("manifest must be a JSON list of items")
 
@@ -112,7 +120,12 @@ def main() -> None:
           flush=True)
 
     t0 = time.time()
-    results = run(manifest, agent, max_tokens=args.max_tokens)
+    results = run(
+        manifest,
+        agent,
+        max_tokens=args.max_tokens,
+        manifest_dir=manifest_dir,
+    )
     elapsed = time.time() - t0
 
     out = Path(args.out)
