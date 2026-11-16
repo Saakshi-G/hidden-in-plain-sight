@@ -1,3 +1,4 @@
+nltk
 # PyTorch: RTX 50-series GPUs (Blackwell, sm_120) need CUDA 12.8+ wheels (torch >= 2.7).
 # Install torch/torchvision first from the CUDA index, then the rest:
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128

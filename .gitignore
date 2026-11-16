@@ -1,3 +1,6 @@
+.venv/
+*.pyc
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -218,6 +221,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+baselines/wang/original/
 
 # Experiment run outputs (keep the results/ dir, ignore generated files)
 results/*
