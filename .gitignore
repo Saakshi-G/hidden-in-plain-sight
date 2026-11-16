@@ -222,3 +222,15 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 baselines/wang/original/
+
+# Experiment run outputs (keep the results/ dir, ignore generated files)
+results/*
+!results/.gitkeep
+injected.png
+
+# Generated dataset, model outputs
+data/synthetic/
+runs/
+# NEVER commit private signing keys
+*.sk
+crypto/keys/

@@ -1,1 +1,36 @@
 nltk
+# PyTorch: RTX 50-series GPUs (Blackwell, sm_120) need CUDA 12.8+ wheels (torch >= 2.7).
+# Install torch/torchvision first from the CUDA index, then the rest:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r requirements.txt
+torch>=2.7
+torchvision>=0.22
+
+# Surrogate models
+open_clip_torch>=2.24     # CLIP ViT-L/14, SigLIP
+timm>=1.0                 # backbone for SigLIP in open_clip
+transformers>=4.40        # TrOCR
+
+# Perceptual constraint / metrics
+lpips>=0.1.4
+torchmetrics>=1.3
+
+# Utilities
+pillow>=10.0
+numpy>=1.26
+tqdm>=4.66
+wandb>=0.16            # training/experiment logging
+requests>=2.31        # agent -> vLLM OpenAI-compatible API calls
+cryptography>=42.0    # Ed25519 authenticated trigger tokens (crypto/)
+
+# VLM fine-tuning (crypto/data run without these; install via scripts/setup_sol.sh)
+peft>=0.11            # LoRA
+accelerate>=0.30
+datasets>=2.19
+qwen-vl-utils>=0.0.8  # Qwen2.5-VL vision preprocessing
+# bitsandbytes>=0.43  # optional, for --load-4bit QLoRA (CUDA only)
+
+# Serving (install via scripts/setup_sol.sh; pulls a matching torch on Sol).
+# Kept out of the pinned list above because the right build is host-specific
+# (Sol A100 vs local RTX 50-series). On Sol: pip install vllm
+# vllm>=0.6.3
