@@ -96,6 +96,17 @@ def main() -> None:
     if not isinstance(manifest, list):
         raise SystemExit("manifest must be a JSON list of items")
 
+    # Relative image paths: generate_synthetic writes them relative to the
+    # manifest's own directory (e.g. "images/s001_inj.png"), while older
+    # manifests are relative to the cwd. Prefer the manifest dir, else keep as-is.
+    manifest_dir = Path(args.manifest).resolve().parent
+    for item in manifest:
+        img = item.get("image")
+        if img and not Path(img).is_absolute():
+            candidate = manifest_dir / img
+            if candidate.exists():
+                item["image"] = str(candidate)
+
     agent = GLM5Agent(base_url=args.base_url, model=args.model, temperature=args.temperature)
     print(f"endpoint: {agent.base_url} | model: {agent.model} | items: {len(manifest)}",
           flush=True)
